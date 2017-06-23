@@ -1,0 +1,91 @@
+#!/bin/bash
+
+conf_path="$(dirname $0)/../etc/ha-remote-cli"
+cert_path="$conf_path/certs"
+
+if [[ -z $HA_HOST || -z $HA_PORT ]]; then echo "Please set HA_HOST and HA_PORT environment variables" && exit 1; fi
+if [[ ! -f ${cert_path}/ha-remote-cli.pem ]]; then echo "Please provide the client certificate in ${cert_path}/ha-remote-cli.pem" && exit 1; fi
+if [[ ! -f ${cert_path}/ha-remote-server.crt ]]; then echo "Please provide the server cafile in ${cert_path}/ha-remote-server.crt" && exit 1; fi
+command -v socat >/dev/null 2>&1 || { echo >&2 "Please install socat"; exit 1; }
+
+function usage {
+	echo "Manage HAproxy remotly from TCP socket
+
+	Usage :
+	$0 [COMMAND] [ACTION] <arguments>
+
+	Examples :
+	$0 status
+	$0 server-backend disable host01 backend01
+	$0 backend enable backend01
+	$0 server enable host01
+
+	Commands :
+	status          Prints haproxy servers status
+	server-backend  Enable/disable a server on a backend
+	server          Enable/disable a server on ALL backends
+	backend         Enable/disable ALL servers on a backend (Service cut-off)
+
+	Actions :
+	enable          Set the server to READY state
+	disable         Set the server to MAINT state
+	"
+	exit 0
+}
+
+function ha-cmd() {
+	echo "$@" | socat stdio openssl-connect:$HA_HOST:$HA_PORT,cert=${cert_path}/ha-remote-cli.pem,cafile=${cert_path}/ha-remote-server.crt
+}
+
+function list-backends() {
+	ha-cmd "show stat" | cut -d, -f1,2,18 | grep -vE "FRONTEND|BACKEND" | tail -n +2 | tr ',' ' ' | column -t
+}
+
+function change-server-backend() {
+	if [ $# -ne 3 ]; then echo "Usage: $0 server-backend enable host01 backend01"; exit 1; fi
+	ha-cmd "$1 server $3/$2" && echo "$2 ${1}d on backend $3"
+}
+
+function change-state() {
+	item="$1"; state="$2"; name="$3"
+	if [ $# -ne 3 ]; then echo "Usage: $0 $item enable <name>"; exit 1; fi
+	servers=($(ha-cmd "show stat" | grep "${name}," | cut -d, -f${selector} | grep -vE "FRONTEND|BACKEND" | tr '\n' ' '))
+	for i in "${servers[@]}"
+	do
+		case ${selector} in
+			1) backend=$i; server=$name;;
+			2) backend=$name; server=$i;;
+			*) exit 1
+		esac
+		ha-cmd "$state server $backend/$server" &>/dev/null && echo "$server ${state}d on backend $backend"
+		#echo "$state server $backend/$server"
+	done
+}
+
+# Check if HAproxy socket is accessible, if not exit the script.
+if ! nc -vz $HA_HOST $HA_PORT &>/dev/null
+then
+	echo "HAproxy TCP socket is not reachable" && exit 1
+fi
+
+case $1 in
+	status)
+		shift
+		list-backends $1
+		;;
+	server)
+		selector=1
+		change-state $@
+		;;
+	backend)
+		selector=2
+		change-state $@
+		;;
+	server-backend)
+		shift
+		change-server-backend $@
+		;;
+	*)
+		usage
+		;;
+esac

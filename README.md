@@ -5,12 +5,14 @@ ha-remote-cli
 
 This tool connects to an haproxy socket exposed over ssl using socat.
 
-You can expose HAproxy socket with these commands :
+You can expose HAproxy socket over ssl with these commands :
 ```
 EXPOSED_PORT=4001
 HAPROXY_SOCKET=/var/run/haproxy.socket
 IP_ADDR=127.0.0.1
-socat openssl-listen:$EXPOSED_PORT,reuseaddr,fork,bind=$IP_ADDR,cert=cert.pem,cafile=client.crt UNIX-CLIENT:$HAPROXY_SOCKET 
+CAFILE=ha-remote-cli.crt
+CERT=ha-remote-server.pem
+socat openssl-listen:$EXPOSED_PORT,reuseaddr,fork,bind=$IP_ADDR,cert=$CERT,cafile=$CAFILE UNIX-CLIENT:$HAPROXY_SOCKET 
 ```
 
 #### Installation

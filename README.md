@@ -1,29 +1,39 @@
-haproxy-remote
---------------
+ha-remote-cli
+-------------
 
-#### Qu'est ce que c'est?
+#### What's that 
 
-Ce script se connecte a une socket TCP sur laquelle est exposé la socket d'administration HAproxy.
+This tool connects to an haproxy socket exposed over ssl using socat.
 
-On peut le faire par exemple avec socat
-
+You can expose HAproxy socket with these commands :
 ```
 EXPOSED_PORT=4001
 HAPROXY_SOCKET=/var/run/haproxy.socket
-socat TCP-LISTEN:$EXPOSED_PORT,reuseaddr,fork UNIX-CLIENT:$HAPROXY_SOCKET
+IP_ADDR=127.0.0.1
+socat openssl-listen:$EXPOSED_PORT,reuseaddr,fork,bind=$IP_ADDR,cert=cert.pem,cafile=client.crt UNIX-CLIENT:$HAPROXY_SOCKET 
 ```
 
-#### Comment ca marche?
+#### Installation
 
-En exposant la socket à distance, on peut s'y connecter et passer directement des commandes. Elles permettent par exemple d'afficher les statistiques ou de passer des commandes d'administration sur les serveurs.
+```
+make install
+```
 
 #### Configuration
 
-Il est nécessaire d'avoir les flux vers le port exposé par socat sur le haproxy.
-
-Positionner les variables d'environnement suivantes pour définir l'instance de HAproxy à administrer 
-
+You need to set up these environments variables:
 ```
 HA_HOST
 HA_PORT
 ```
+
+Add your client certificate and the server CA in the configuration directory
+```
+/usr/local/etc/ha-remote-cli/certs/ha-remote-cli.pem
+/usr/local/etc/ha-remote-cli/certs/ha-remote-server.crt
+```
+
+#### TODO
+
+* Use a configuration file to select the HAproxy instance to connect
+* Ability to use any command on the socket

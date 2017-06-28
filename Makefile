@@ -9,7 +9,6 @@ DOC_FILES=*.md
 PKG_DIR=pkg
 PKG_NAME=$(NAME)-$(VERSION)
 PKG=$(PKG_DIR)/$(PKG_NAME).tar.gz
-SIG=$(PKG_DIR)/$(PKG_NAME).asc
 
 PREFIX?=/usr/local
 DOC_DIR=$(PREFIX)/share/doc/$(PKG_NAME)
@@ -22,15 +21,10 @@ $(PKG): pkg
 
 build: $(PKG)
 
-$(SIG): $(PKG)
-	gpg2 --sign --detach-sign --armor $(PKG)
-
-sign: $(SIG)
-
 clean:
-	rm -f $(PKG) $(SIG)
+	rm -f $(PKG)
 
-all: $(PKG) $(SIG)
+all: $(PKG)
 
 test:
 
@@ -38,7 +32,7 @@ tag:
 	git tag v$(VERSION)
 	git push --tags
 
-release: $(PKG) $(SIG) tag
+release: $(PKG) tag
 
 install:
 	for dir in $(INSTALL_DIRS); do mkdir -p $(PREFIX)/$$dir; done
@@ -51,4 +45,4 @@ uninstall:
 	rm -rf $(DOC_DIR)
 
 
-.PHONY: build sign clean test tag release install uninstall all
+.PHONY: build clean test tag release install uninstall all

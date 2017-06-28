@@ -15,10 +15,10 @@ CERT=ha-remote-server.pem
 socat openssl-listen:$EXPOSED_PORT,reuseaddr,fork,bind=$IP_ADDR,cert=$CERT,cafile=$CAFILE UNIX-CLIENT:$HAPROXY_SOCKET 
 ```
 
-#### Installation
+#### Install
 
 ```
-make install
+sudo make install
 ```
 
 #### Configuration
@@ -39,3 +39,9 @@ Add your client certificate and the server CA in the configuration directory
 
 * Use a configuration file to select the HAproxy instance to connect
 * Ability to use any command on the socket
+
+### Uninstall
+
+```
+sudo make uninstall
+```

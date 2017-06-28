@@ -7,6 +7,7 @@ if [[ -z $HA_HOST || -z $HA_PORT ]]; then echo "Please set HA_HOST and HA_PORT e
 if [[ ! -f ${cert_path}/ha-remote-cli.pem ]]; then echo "Please provide the client certificate in ${cert_path}/ha-remote-cli.pem" && exit 1; fi
 if [[ ! -f ${cert_path}/ha-remote-server.crt ]]; then echo "Please provide the server cafile in ${cert_path}/ha-remote-server.crt" && exit 1; fi
 command -v socat >/dev/null 2>&1 || { echo >&2 "Please install socat"; exit 1; }
+if ! nc -vz $HA_HOST $HA_PORT &>/dev/null; then	echo "HAproxy TCP socket is not reachable" && exit 1; fi
 
 function usage {
 	echo "Manage HAproxy remotly from TCP socket
@@ -58,15 +59,8 @@ function change-state() {
 			*) exit 1
 		esac
 		ha-cmd "$state server $backend/$server" &>/dev/null && echo "$server ${state}d on backend $backend"
-		#echo "$state server $backend/$server"
 	done
 }
-
-# Check if HAproxy socket is accessible, if not exit the script.
-if ! nc -vz $HA_HOST $HA_PORT &>/dev/null
-then
-	echo "HAproxy TCP socket is not reachable" && exit 1
-fi
 
 case $1 in
 	status)
